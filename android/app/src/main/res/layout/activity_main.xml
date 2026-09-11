@@ -1,16 +1,100 @@
 <FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/root_scrim"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="#FFFFFF">
+    android:background="#66000000"
+    android:clickable="true"
+    android:descendantFocusability="afterDescendants">
 
-    <TextView
-        android:layout_width="wrap_content"
+    <LinearLayout
+        android:id="@+id/sheet_card"
+        android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_gravity="center"
+        android:layout_gravity="bottom"
+        android:orientation="vertical"
+        android:background="@drawable/sheet_card_bg"
         android:padding="24dp"
-        android:gravity="center"
-        android:textSize="15sp"
-        android:textColor="#8A8A8E"
-        android:text="여기에 한마디 입력 시트가 들어갈 예정입니다" />
+        android:clickable="true"
+        android:descendantFocusability="afterDescendants">
+
+        <View
+            android:layout_width="36dp"
+            android:layout_height="4dp"
+            android:layout_gravity="center_horizontal"
+            android:layout_marginBottom="20dp"
+            android:background="#E0E0E2" />
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="접수했어요"
+            android:textSize="12sp"
+            android:textColor="#8A8A8E" />
+
+        <TextView
+            android:id="@+id/sheet_quest_text"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="4dp"
+            android:layout_marginBottom="18dp"
+            android:textSize="18sp"
+            android:textStyle="bold"
+            android:textColor="#1C1C1E"
+            android:text="창문 하나만 활짝 열어보기" />
+
+        <EditText
+            android:id="@+id/note_input"
+            android:layout_width="match_parent"
+            android:layout_height="72dp"
+            android:focusable="true"
+            android:focusableInTouchMode="true"
+            android:background="@drawable/note_input_bg"
+            android:gravity="top|start"
+            android:padding="13dp"
+            android:hint="한마디만 (안 남겨도 돼요)"
+            android:textColorHint="#B3B3B6"
+            android:textSize="14.5sp"
+            android:textColor="#1C1C1E"
+            android:inputType="textMultiLine|textCapSentences"
+            android:maxLength="140" />
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="6dp"
+            android:layout_marginBottom="18dp"
+            android:text="다른 사람에게 랜덤으로 보일 수 있어요. 이름·연락처는 적지 마세요."
+            android:textSize="11sp"
+            android:textColor="#B3B3B6" />
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal">
+
+            <Button
+                android:id="@+id/btn_close_note"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:layout_marginEnd="8dp"
+                android:background="@drawable/btn_secondary_bg"
+                android:textColor="#6B6B70"
+                android:textAllCaps="false"
+                android:text="닫기" />
+
+            <Button
+                android:id="@+id/btn_send_note"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="2"
+                android:background="@drawable/btn_primary_bg"
+                android:textColor="#FFFFFF"
+                android:textAllCaps="false"
+                android:text="보내기" />
+
+        </LinearLayout>
+
+    </LinearLayout>
 
 </FrameLayout>

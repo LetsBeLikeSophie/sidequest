@@ -1,3 +1,17 @@
 <resources>
     <style name="Theme.SideQuest" parent="android:Theme.Material.Light.NoActionBar" />
+
+    <!-- Used by MainActivity so "해볼래" opens something with the weight of a
+         short response sheet, not a full app screen (기획문서 2.2). A Dialog-based
+         theme is used (not plain Theme.Translucent) because dialog windows are
+         the pattern Android actually supports for hosting a focusable EditText +
+         IME reliably; a bare translucent activity window would not take view focus
+         on tap (found while testing the note input – see MainActivity). -->
+    <style name="Theme.SideQuest.Sheet" parent="android:Theme.Material.Light.Dialog.NoActionBar">
+        <item name="android:windowIsFloating">true</item>
+        <item name="android:windowBackground">@android:color/transparent</item>
+        <item name="android:windowContentOverlay">@null</item>
+        <item name="android:windowNoTitle">true</item>
+        <item name="android:backgroundDimEnabled">false</item>
+    </style>
 </resources>
