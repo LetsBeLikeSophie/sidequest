@@ -14,3 +14,4 @@ android/.cxx/
 .DS_Store
 Thumbs.db
 .claude/
+.env
