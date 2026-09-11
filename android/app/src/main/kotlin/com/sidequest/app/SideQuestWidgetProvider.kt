@@ -91,6 +91,13 @@ class SideQuestWidgetProvider : AppWidgetProvider() {
         appWidgetIds.forEach { updateWidget(context, appWidgetManager, it) }
     }
 
+    // Called once when the first widget instance is placed — a reasonable
+    // moment to start the random notification chain (기획문서 2.1).
+    override fun onEnabled(context: Context) {
+        super.onEnabled(context)
+        NotificationScheduler.ensureScheduled(context)
+    }
+
     override fun onReceive(context: Context, intent: Intent) {
         super.onReceive(context, intent)
         if (intent.action == ACTION_SKIP) {

@@ -1,7 +1,10 @@
 package com.sidequest.app
 
+import android.Manifest
 import android.app.Activity
 import android.content.Intent
+import android.content.pm.PackageManager
+import android.os.Build
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
@@ -10,6 +13,7 @@ import android.text.TextWatcher
 import android.view.ViewGroup
 import android.widget.EditText
 import android.widget.TextView
+import androidx.core.app.ActivityCompat
 
 /**
  * The "한마디 남기기" sheet (기획문서 2.3). Reached only after "해볼래" was
@@ -35,6 +39,18 @@ class MainActivity : Activity() {
         // to fill the screen ourselves so our own scrim + bottom card do the layout.
         window.setLayout(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT)
         setupSheet()
+        ensureNotificationPermission()
+    }
+
+    // 알림 권한 요청 문구/타이밍은 기획문서에서도 "실제 화면 나온 후 UX 피드백으로 확정"이라 아직
+    // 보류 상태 — 지금은 시스템 다이얼로그만 뜨게 해서 알림이 실제로 도착하는지부터 검증한다.
+    private fun ensureNotificationPermission() {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU) return
+        val granted = ActivityCompat.checkSelfPermission(this, Manifest.permission.POST_NOTIFICATIONS) ==
+            PackageManager.PERMISSION_GRANTED
+        if (!granted) {
+            ActivityCompat.requestPermissions(this, arrayOf(Manifest.permission.POST_NOTIFICATIONS), 1001)
+        }
     }
 
     override fun onNewIntent(intent: Intent) {
