@@ -1,0 +1,419 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>사이드퀘스트 — 위젯 프로토타입 v2 (한마디 + 아카이브 + LLM 반응)</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Gowun+Dodum&display=swap">
+<style>
+  :root {
+    --bg-top: #dfe4ec;
+    --bg-bottom: #c7cedb;
+    --widget-bg: #ffffff;
+    --text-main: #1c1c1e;
+    --text-sub: #8a8a8e;
+    --btn-primary-bg: #5a6bb0;
+    --btn-primary-text: #ffffff;
+    --btn-secondary-bg: #f0f0f2;
+    --btn-secondary-text: #6b6b70;
+    --tag-bg: #f0f0f2;
+    --tag-text: #7a7a80;
+    --scrim: rgba(20,20,22,0.38);
+    --shadow: 0 20px 40px -12px rgba(0,0,0,0.25), 0 4px 12px rgba(0,0,0,0.08);
+  }
+
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+
+  html, body {
+    margin: 0;
+    height: 100%;
+    font-family: -apple-system, BlinkMacSystemFont, "Pretendard", "Apple SD Gothic Neo", "Malgun Gothic", sans-serif;
+  }
+
+  body {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: radial-gradient(circle at 30% 20%, var(--bg-top), var(--bg-bottom));
+    overflow: hidden;
+  }
+
+  .phone {
+    width: 360px;
+    height: 720px;
+    background: linear-gradient(160deg, #e8ecf2 0%, #d3dae4 100%);
+    border-radius: 46px;
+    box-shadow: var(--shadow);
+    position: relative;
+    padding: 64px 20px 40px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    overflow: hidden;
+  }
+
+  .notch {
+    position: absolute;
+    top: 18px; left: 50%;
+    transform: translateX(-50%);
+    width: 120px; height: 26px;
+    background: #0b0b0c;
+    border-radius: 16px;
+  }
+
+  .clock {
+    color: rgba(28,28,30,0.55);
+    font-size: 13px;
+    font-weight: 600;
+    margin-bottom: 28px;
+  }
+
+  /* ---- Widget ---- */
+  .widget {
+    width: 100%; max-width: 320px; height: 155px;
+    background: var(--widget-bg);
+    border-radius: 26px;
+    box-shadow: 0 8px 20px rgba(0,0,0,0.10), 0 2px 4px rgba(0,0,0,0.04);
+    padding: 18px 20px 16px;
+    display: flex; flex-direction: column; justify-content: space-between;
+  }
+
+  .quest-tag {
+    display: inline-flex; align-items: center;
+    background: var(--tag-bg); color: var(--tag-text);
+    font-size: 10.5px; font-weight: 600;
+    padding: 4px 9px; border-radius: 20px;
+  }
+
+  .quest-text-wrap { flex: 1; display: flex; align-items: center; min-height: 54px; }
+  .quest-text { font-family: 'Gowun Dodum', -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo", sans-serif; font-size: 18.5px; font-weight: 400; color: var(--text-main); line-height: 1.48; letter-spacing: -0.2px; }
+
+  .widget-buttons { display: flex; gap: 8px; }
+  .btn {
+    flex: 1; border: none; border-radius: 13px; padding: 11px 0;
+    font-size: 14px; font-weight: 600; cursor: pointer;
+    transition: transform 0.12s ease, opacity 0.12s ease;
+  }
+  .btn:active { transform: scale(0.96); opacity: 0.85; }
+  .btn-secondary { background: var(--btn-secondary-bg); color: var(--btn-secondary-text); }
+  .btn-primary { background: var(--btn-primary-bg); color: var(--btn-primary-text); }
+
+  .quest-text-wrap.anim-out .quest-text, .widget-top.anim-out .quest-tag { animation: fadeSlideOut 0.16s ease forwards; }
+  .quest-text-wrap.anim-in .quest-text, .widget-top.anim-in .quest-tag { animation: fadeSlideIn 0.22s ease forwards; }
+  @keyframes fadeSlideOut { to { opacity: 0; transform: translateY(-6px); } }
+  @keyframes fadeSlideIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
+
+  .hint {
+    margin-top: 28px; color: rgba(28,28,30,0.35);
+    font-size: 12px; text-align: center; line-height: 1.6; max-width: 260px;
+  }
+
+  .home-indicator {
+    position: absolute; bottom: 14px; left: 50%; transform: translateX(-50%);
+    width: 120px; height: 5px; background: rgba(28,28,30,0.25); border-radius: 3px;
+  }
+
+  /* ---- Sheet ---- */
+  .scrim {
+    position: absolute; inset: 0;
+    background: var(--scrim);
+    opacity: 0; pointer-events: none;
+    transition: opacity 0.25s ease;
+    z-index: 5;
+  }
+  .scrim.show { opacity: 1; pointer-events: auto; }
+
+  .sheet {
+    position: absolute;
+    left: 0; right: 0; bottom: 0;
+    background: var(--widget-bg);
+    border-radius: 28px 28px 0 0;
+    padding: 14px 22px 34px;
+    box-shadow: 0 -8px 30px rgba(0,0,0,0.18);
+    transform: translateY(105%);
+    transition: transform 0.32s cubic-bezier(.32,.72,0,1);
+    z-index: 6;
+  }
+  .sheet.show { transform: translateY(0); }
+
+  .sheet-grip {
+    width: 36px; height: 4px; background: #e0e0e2; border-radius: 3px;
+    margin: 0 auto 18px;
+  }
+
+  .sheet-quest-label {
+    font-size: 12px; color: var(--text-sub); margin-bottom: 4px;
+  }
+  .sheet-quest-text {
+    font-family: 'Gowun Dodum', -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo", sans-serif;
+    font-size: 17px; font-weight: 400; color: var(--text-main);
+    margin-bottom: 18px; line-height: 1.45;
+  }
+
+  .note-input {
+    width: 100%;
+    border: 1px solid #e5e5e7;
+    background: #fafafa;
+    border-radius: 14px;
+    padding: 13px 14px;
+    font-size: 14.5px;
+    font-family: inherit;
+    color: var(--text-main);
+    resize: none;
+    height: 64px;
+    outline: none;
+  }
+  .note-input:focus { border-color: #c7c7ca; }
+  .note-input::placeholder { color: #b3b3b6; }
+
+  .sheet-note-hint {
+    font-size: 11px; color: #b3b3b6; margin-top: 6px; margin-bottom: 18px;
+  }
+
+  .sheet-buttons { display: flex; gap: 8px; }
+  .sheet-buttons .btn { padding: 13px 0; font-size: 14.5px; border-radius: 14px; }
+
+  /* ---- whisper reaction ---- */
+  .whisper {
+    position: absolute;
+    left: 50%; bottom: 92px;
+    transform: translate(-50%, 8px);
+    background: rgba(28,28,30,0.88);
+    color: #fff;
+    font-size: 13px;
+    font-weight: 500;
+    padding: 10px 18px;
+    border-radius: 20px;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.4s ease, transform 0.4s ease;
+    z-index: 20;
+    white-space: nowrap;
+  }
+  .whisper.show { opacity: 1; transform: translate(-50%, 0); }
+
+  /* ---- archive peek (dev-only debug panel) ---- */
+  .archive-peek {
+    margin-top: 14px;
+    font-size: 10.5px;
+    color: rgba(28,28,30,0.3);
+    text-align: center;
+  }
+</style>
+</head>
+<body>
+
+  <div class="phone" id="phone">
+    <div class="notch"></div>
+    <div class="clock" id="clock">9:41</div>
+
+    <div class="widget" id="widget">
+      <div class="widget-top" id="widgetTop">
+        <span class="quest-tag" id="questTag">실내 · 5분</span>
+      </div>
+      <div class="quest-text-wrap" id="questTextWrap">
+        <div class="quest-text" id="questText">창문 하나만 활짝 열어보기</div>
+      </div>
+      <div class="widget-buttons">
+        <button class="btn btn-secondary" id="btnSkip">다음에</button>
+        <button class="btn btn-primary" id="btnGo">해볼래</button>
+      </div>
+    </div>
+
+    <div class="hint">"해볼래"를 누르면 짧은 시트가 올라와요.<br>한마디는 안 남겨도 완전히 정상이에요.</div>
+    <div class="archive-peek" id="archivePeek">아카이브 0건 (개발용 표시, 실제 앱엔 없음)</div>
+
+    <div class="scrim" id="scrim"></div>
+    <div class="sheet" id="sheet">
+      <div class="sheet-grip"></div>
+      <div class="sheet-quest-label">접수했어요</div>
+      <div class="sheet-quest-text" id="sheetQuestText">창문 하나만 활짝 열어보기</div>
+      <textarea class="note-input" id="noteInput" placeholder="한마디만 (안 남겨도 돼요)" maxlength="140"></textarea>
+      <div class="sheet-note-hint">다른 사람에게 랜덤으로 보일 수 있어요. 이름·연락처는 적지 마세요.</div>
+      <div class="sheet-buttons">
+        <button class="btn btn-secondary" id="btnClose" style="flex:1;">닫기</button>
+        <button class="btn btn-primary" id="btnSend" style="flex:2;">보내기</button>
+      </div>
+    </div>
+
+    <div class="whisper" id="whisper"></div>
+    <div class="home-indicator"></div>
+  </div>
+
+<script>
+  const quests = [
+    { tag: "실내 · 5분",     text: "창문 하나만 활짝 열어보기" },
+    { tag: "실외 · 즉시",     text: "하늘 색 3초만 쳐다보기" },
+    { tag: "같이 · 즉시",     text: "옆에 있는 사람한테 아무 말이나 걸어보기" },
+    { tag: "머리 씀 · 15분+", text: "안 읽은 책 아무 페이지나 펼쳐 읽기" },
+    { tag: "이동중 · 즉시",   text: "이어폰 빼고 주변 소리 들어보기" },
+    { tag: "그냥 멍 · 5분",   text: "아무것도 안 하고 가만히 앉아있기" },
+    { tag: "몸 씀 · 즉시",     text: "목 한 바퀴 천천히 돌려보기" },
+    { tag: "창작 · 15분+",    text: "아무 종이에나 낙서 하나 그려보기" },
+    { tag: "혼자 · 5분",     text: "핸드폰 없이 커피 한 잔 마셔보기" },
+    { tag: "실외 · 15분+",   text: "평소 안 가던 골목으로 돌아가보기" }
+  ];
+
+  // Stand-in for the real backend archive call (server-side "조용히 아카이브").
+  // In production this posts { questId, tag, note, ts } to the archive endpoint;
+  // here it's just localStorage so the flow can be demoed without a server.
+  const ARCHIVE_KEY = 'sidequest_archive_v2';
+  let memoryFallback = [];
+  const storage = {
+    save(entry) {
+      const all = this.all();
+      all.push(entry);
+      try { localStorage.setItem(ARCHIVE_KEY, JSON.stringify(all)); }
+      catch { memoryFallback = all; } // storage blocked (e.g. sandboxed preview) — keep it in memory instead
+      return all.length;
+    },
+    all() {
+      try { return JSON.parse(localStorage.getItem(ARCHIVE_KEY) || '[]'); }
+      catch { return memoryFallback; }
+    }
+  };
+
+  // Stand-in for the real LLM call ("짧은 반응 전용 프롬프트, 분석/조언/칭찬 금지").
+  // Swap this for an actual API call to a backend that holds the key —
+  // never call an LLM provider directly from client JS with an embedded key.
+  const whisperPool = [
+    "오, 좋네요.", "그거 좋은 소리네요.", "기록해뒀어요.",
+    "네, 접수요.", "좋은 한마디네요.", "그렇군요, 담아뒀어요.",
+    "괜찮은 순간이었겠네요.", "오늘 하루의 한 조각이네요."
+  ];
+  function mockLLMReaction(note) {
+    const trimmed = note.trim();
+    // relevance-only check, not a quality judgment: skip empty/garbage-looking input
+    if (trimmed.length < 2) return null;
+    if (/^[\s\W_]+$/.test(trimmed)) return null;
+    if (Math.random() >= 0.55) return null; // 55% odds by design, not every time
+    return whisperPool[Math.floor(Math.random() * whisperPool.length)];
+  }
+
+  let current = quests[0];
+  let pool = quests.slice(1);
+
+  const widgetTop = document.getElementById('widgetTop');
+  const questTextWrap = document.getElementById('questTextWrap');
+  const questTag = document.getElementById('questTag');
+  const questText = document.getElementById('questText');
+  const btnSkip = document.getElementById('btnSkip');
+  const btnGo = document.getElementById('btnGo');
+
+  const scrim = document.getElementById('scrim');
+  const sheet = document.getElementById('sheet');
+  const sheetQuestText = document.getElementById('sheetQuestText');
+  const noteInput = document.getElementById('noteInput');
+  const btnClose = document.getElementById('btnClose');
+  const btnSend = document.getElementById('btnSend');
+  const whisper = document.getElementById('whisper');
+  const archivePeek = document.getElementById('archivePeek');
+
+  function pickNext() {
+    if (pool.length === 0) pool = quests.slice();
+    const idx = Math.floor(Math.random() * pool.length);
+    const next = pool[idx];
+    pool.splice(idx, 1);
+    return next;
+  }
+
+  function renderQuest(q, animate) {
+    if (animate) {
+      widgetTop.classList.add('anim-out');
+      questTextWrap.classList.add('anim-out');
+      setTimeout(() => {
+        questTag.textContent = q.tag;
+        questText.textContent = q.text;
+        widgetTop.classList.remove('anim-out');
+        questTextWrap.classList.remove('anim-out');
+        widgetTop.classList.add('anim-in');
+        questTextWrap.classList.add('anim-in');
+        setTimeout(() => {
+          widgetTop.classList.remove('anim-in');
+          questTextWrap.classList.remove('anim-in');
+        }, 240);
+      }, 160);
+    } else {
+      questTag.textContent = q.tag;
+      questText.textContent = q.text;
+    }
+  }
+
+  function updateArchivePeek() {
+    archivePeek.textContent = `아카이브 ${storage.all().length}건 (개발용 표시, 실제 앱엔 없음)`;
+  }
+
+  let idleTimer = null;
+
+  function openSheet() {
+    sheetQuestText.textContent = current.text;
+    noteInput.value = '';
+    scrim.classList.add('show');
+    sheet.classList.add('show');
+    setTimeout(() => noteInput.focus(), 320);
+    // default is to skip (기본값은 생략) — if nothing is typed, close on its own
+    idleTimer = setTimeout(() => closeSheetAndAdvance(null), 3200);
+  }
+
+  // typing means they're using it — stop the auto-close from cutting them off
+  noteInput.addEventListener('input', () => {
+    if (idleTimer) { clearTimeout(idleTimer); idleTimer = null; }
+  });
+
+  function closeSheetAndAdvance(note) {
+    if (idleTimer) { clearTimeout(idleTimer); idleTimer = null; }
+    scrim.classList.remove('show');
+    sheet.classList.remove('show');
+
+    const entry = {
+      quest: current.text,
+      tag: current.tag,
+      note: note || null,
+      ts: new Date().toISOString()
+    };
+    storage.save(entry);
+    updateArchivePeek();
+
+    const reaction = note ? mockLLMReaction(note) : null;
+    if (reaction) {
+      setTimeout(() => showWhisper(reaction), 380);
+    }
+
+    setTimeout(() => {
+      current = pickNext();
+      renderQuest(current, true);
+    }, 340);
+  }
+
+  function showWhisper(text) {
+    whisper.textContent = text;
+    whisper.classList.add('show');
+    setTimeout(() => whisper.classList.remove('show'), 3000);
+  }
+
+  btnSkip.addEventListener('click', () => {
+    current = pickNext();
+    renderQuest(current, true);
+  });
+
+  btnGo.addEventListener('click', openSheet);
+
+  btnClose.addEventListener('click', () => closeSheetAndAdvance(null));
+  btnSend.addEventListener('click', () => closeSheetAndAdvance(noteInput.value));
+  scrim.addEventListener('click', () => closeSheetAndAdvance(noteInput.value));
+
+  updateArchivePeek();
+
+  function updateClock() {
+    const now = new Date();
+    let h = now.getHours();
+    const m = now.getMinutes().toString().padStart(2, '0');
+    h = h % 12 || 12;
+    document.getElementById('clock').textContent = `${h}:${m}`;
+  }
+  updateClock();
+  setInterval(updateClock, 15000);
+</script>
+
+</body>
+</html>

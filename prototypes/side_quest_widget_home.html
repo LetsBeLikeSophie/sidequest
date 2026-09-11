@@ -1,0 +1,498 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>사이드퀘스트 — 홈스크린 위젯 목업 (위젯 ↔ 시트 전환)</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Gowun+Dodum&display=swap">
+<style>
+  :root {
+    --widget-bg: #ffffff;
+    --text-main: #1c1c1e;
+    --text-sub: #8a8a8e;
+    --btn-primary-bg: #5a6bb0;
+    --btn-primary-text: #ffffff;
+    --btn-secondary-bg: #f0f0f2;
+    --btn-secondary-text: #6b6b70;
+    --tag-bg: #f0f0f2;
+    --tag-text: #7a7a80;
+    --scrim: rgba(20,20,22,0.4);
+    --shadow: 0 20px 40px -12px rgba(0,0,0,0.3), 0 4px 12px rgba(0,0,0,0.1);
+  }
+
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+
+  html, body {
+    margin: 0; height: 100%;
+    font-family: -apple-system, BlinkMacSystemFont, "Pretendard", "Apple SD Gothic Neo", "Malgun Gothic", sans-serif;
+  }
+
+  body {
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    gap: 18px;
+    background: #eef0f4;
+    min-height: 100%;
+    padding: 24px 0;
+  }
+
+  /* ---- dev control (outside the phone, not part of the product) ---- */
+  .dev-control {
+    display: flex; align-items: center; gap: 10px;
+    background: #fff; border-radius: 20px; padding: 6px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+  }
+  .dev-control span {
+    font-size: 11px; color: #a0a0a4; padding-left: 8px;
+  }
+  .dev-btn {
+    border: none; background: transparent; padding: 8px 16px;
+    font-size: 12.5px; font-weight: 600; color: #9a9a9e;
+    border-radius: 16px; cursor: pointer; transition: all 0.15s ease;
+  }
+  .dev-btn.active { background: #5a6bb0; color: #fff; }
+
+  .phone {
+    width: 360px; height: 720px;
+    background: linear-gradient(160deg, #6b7db3 0%, #3d4a75 55%, #2a3357 100%);
+    border-radius: 46px;
+    box-shadow: var(--shadow);
+    position: relative;
+    overflow: hidden;
+  }
+
+  .notch {
+    position: absolute; top: 18px; left: 50%; transform: translateX(-50%);
+    width: 120px; height: 26px; background: #0b0b0c; border-radius: 16px; z-index: 3;
+  }
+
+  .clock {
+    position: absolute; top: 52px; left: 0; right: 0; text-align: center;
+    color: rgba(255,255,255,0.92); font-size: 13px; font-weight: 600;
+  }
+
+  /* ---- home icon grid ---- */
+  .grid {
+    position: absolute; top: 92px; left: 20px; right: 20px; bottom: 110px;
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    grid-auto-rows: 74px;
+    gap: 14px 8px;
+  }
+
+  .app-icon {
+    display: flex; flex-direction: column; align-items: center; gap: 5px;
+  }
+  .app-icon .glyph {
+    width: 56px; height: 56px; border-radius: 15px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 24px;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.15);
+  }
+  .app-icon .label {
+    font-size: 10px; color: rgba(255,255,255,0.85); font-weight: 500;
+  }
+
+  .widget-slot {
+    grid-column: span 4;
+    grid-row: span 2;
+    display: flex; align-items: flex-start; justify-content: flex-start;
+  }
+  .widget-slot.small { grid-column: span 2; grid-row: span 2; }
+
+  /* ---- Widget: medium ---- */
+  .widget {
+    width: 100%; height: 100%;
+    background: var(--widget-bg);
+    border-radius: 22px;
+    box-shadow: 0 6px 16px rgba(0,0,0,0.22);
+    padding: 14px 16px 12px;
+    display: flex; flex-direction: column; justify-content: space-between;
+    cursor: pointer;
+  }
+
+  .quest-tag {
+    display: inline-flex; align-items: center;
+    background: var(--tag-bg); color: var(--tag-text);
+    font-size: 9.5px; font-weight: 600; padding: 3px 8px; border-radius: 20px;
+    align-self: flex-start;
+  }
+
+  .quest-text-wrap { flex: 1; display: flex; align-items: center; }
+  .quest-text {
+    font-family: 'Gowun Dodum', -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo", sans-serif;
+    font-size: 15.5px; font-weight: 400; color: var(--text-main); line-height: 1.4;
+    letter-spacing: -0.1px;
+    display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
+  }
+
+  .widget-buttons { display: flex; gap: 6px; }
+  .btn {
+    flex: 1; border: none; border-radius: 10px; padding: 8px 0;
+    font-size: 11.5px; font-weight: 600; cursor: pointer;
+    transition: transform 0.12s ease, opacity 0.12s ease;
+  }
+  .btn:active { transform: scale(0.95); opacity: 0.85; }
+  .btn-secondary { background: var(--btn-secondary-bg); color: var(--btn-secondary-text); }
+  .btn-primary { background: var(--btn-primary-bg); color: var(--btn-primary-text); }
+
+  /* ---- Widget: small (텍스트만 — no tag, no buttons; whole tile taps into the sheet) ---- */
+  .widget.small-variant {
+    justify-content: center;
+  }
+  .widget.small-variant .quest-tag { display: none; }
+  .widget.small-variant .quest-text {
+    font-size: 15px;
+    -webkit-line-clamp: 4;
+  }
+
+  /* ---- dock ---- */
+  .dock {
+    position: absolute; left: 14px; right: 14px; bottom: 22px;
+    height: 72px;
+    background: rgba(255,255,255,0.18);
+    backdrop-filter: blur(10px);
+    border-radius: 24px;
+    display: flex; align-items: center; justify-content: space-around;
+  }
+  .dock .glyph { width: 52px; height: 52px; border-radius: 14px; display: flex; align-items: center; justify-content: center; font-size: 22px; }
+
+  .home-indicator {
+    position: absolute; bottom: 8px; left: 50%; transform: translateX(-50%);
+    width: 120px; height: 5px; background: rgba(255,255,255,0.6); border-radius: 3px; z-index: 3;
+  }
+
+  /* ---- transition sheet (widget -> app) ---- */
+  .scrim {
+    position: absolute; inset: 0; background: var(--scrim);
+    opacity: 0; pointer-events: none; transition: opacity 0.28s ease; z-index: 8;
+  }
+  .scrim.show { opacity: 1; pointer-events: auto; }
+
+  .sheet {
+    position: absolute; left: 0; right: 0; bottom: 0;
+    background: var(--widget-bg);
+    border-radius: 28px 28px 0 0;
+    padding: 14px 24px 40px;
+    box-shadow: 0 -10px 32px rgba(0,0,0,0.22);
+    transform: translateY(100%);
+    transition: transform 0.34s cubic-bezier(.32,.72,0,1);
+    z-index: 9;
+  }
+  .sheet.show { transform: translateY(0); }
+
+  .sheet-grip { width: 36px; height: 4px; background: #e0e0e2; border-radius: 3px; margin: 0 auto 20px; }
+  .sheet-eyebrow { font-size: 11.5px; color: var(--text-sub); margin-bottom: 6px; }
+  .sheet-quest-text { font-family: 'Gowun Dodum', -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo", sans-serif; font-size: 20px; font-weight: 400; color: var(--text-main); line-height: 1.45; margin-bottom: 18px; }
+  .sheet-buttons { display: flex; gap: 10px; }
+  .sheet-buttons .btn { padding: 14px 0; font-size: 15px; border-radius: 15px; }
+
+  .note-input {
+    width: 100%;
+    border: 1px solid #e5e5e7;
+    background: #fafafa;
+    border-radius: 14px;
+    padding: 13px 14px;
+    font-size: 14.5px;
+    font-family: inherit;
+    color: var(--text-main);
+    resize: none;
+    height: 60px;
+    outline: none;
+    margin-bottom: 8px;
+  }
+  .note-input:focus { border-color: #c7c7ca; }
+  .note-input::placeholder { color: #b3b3b6; }
+
+  .sheet-note-hint {
+    font-size: 11px; color: #b3b3b6; margin-bottom: 18px;
+  }
+
+  .whisper {
+    position: absolute;
+    left: 50%; bottom: 92px;
+    transform: translate(-50%, 8px);
+    background: rgba(28,28,30,0.88);
+    color: #fff;
+    font-size: 13px;
+    font-weight: 500;
+    padding: 10px 18px;
+    border-radius: 20px;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.4s ease, transform 0.4s ease;
+    z-index: 20;
+    white-space: nowrap;
+  }
+  .whisper.show { opacity: 1; transform: translate(-50%, 0); }
+
+  .note {
+    max-width: 320px; text-align: center; font-size: 12px; color: #9a9a9e; line-height: 1.6;
+  }
+</style>
+</head>
+<body>
+
+  <div class="dev-control">
+    <span>위젯 크기</span>
+    <button class="dev-btn active" id="btnMedium">미디엄</button>
+    <button class="dev-btn" id="btnSmall">스몰</button>
+  </div>
+
+  <div class="phone">
+    <div class="notch"></div>
+    <div class="clock" id="clock">9:41</div>
+
+    <div class="grid">
+      <div class="app-icon"><div class="glyph" style="background:#ff6b5c;">✉️</div><div class="label">메시지</div></div>
+      <div class="app-icon"><div class="glyph" style="background:#4a90e2;">📷</div><div class="label">카메라</div></div>
+
+      <div class="widget-slot" id="widgetSlot">
+        <div class="widget" id="widget">
+          <div>
+            <span class="quest-tag" id="questTag">실내 · 5분</span>
+          </div>
+          <div class="quest-text-wrap">
+            <div class="quest-text" id="questText">창문 하나만 활짝 열어보기</div>
+          </div>
+          <div class="widget-buttons" id="widgetButtons">
+            <button class="btn btn-secondary" id="btnSkip">다음에</button>
+            <button class="btn btn-primary" id="btnGo">해볼래</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="app-icon"><div class="glyph" style="background:#7ed957;">🎵</div><div class="label">음악</div></div>
+      <div class="app-icon"><div class="glyph" style="background:#ffb443;">🗓️</div><div class="label">캘린더</div></div>
+      <div class="app-icon"><div class="glyph" style="background:#a06bff;">📝</div><div class="label">메모</div></div>
+      <div class="app-icon"><div class="glyph" style="background:#4dd0c4;">🌤️</div><div class="label">날씨</div></div>
+      <div class="app-icon"><div class="glyph" style="background:#ff8fb3;">🎧</div><div class="label">팟캐스트</div></div>
+      <div class="app-icon"><div class="glyph" style="background:#8c9eff;">🗺️</div><div class="label">지도</div></div>
+    </div>
+
+    <div class="dock">
+      <div class="glyph" style="background:#4a90e2;">📞</div>
+      <div class="glyph" style="background:#7ed957;">💬</div>
+      <div class="glyph" style="background:#ff6b5c;">🧭</div>
+      <div class="glyph" style="background:#333;">⚙️</div>
+    </div>
+
+    <div class="home-indicator"></div>
+
+    <div class="scrim" id="scrim"></div>
+    <div class="sheet" id="sheet">
+      <div class="sheet-grip"></div>
+      <div class="sheet-eyebrow" id="sheetEyebrow">사이드퀘스트</div>
+      <div class="sheet-quest-text" id="sheetQuestText">창문 하나만 활짝 열어보기</div>
+
+      <div class="sheet-buttons" id="sheetDecideButtons">
+        <button class="btn btn-secondary" id="sheetSkip" style="flex:1;">다음에</button>
+        <button class="btn btn-primary" id="sheetGo" style="flex:2;">해볼래</button>
+      </div>
+
+      <div id="sheetNoteBlock" style="display:none;">
+        <textarea class="note-input" id="noteInput" placeholder="한마디만 (안 남겨도 돼요)" maxlength="140"></textarea>
+        <div class="sheet-note-hint">다른 사람에게 랜덤으로 보일 수 있어요. 이름·연락처는 적지 마세요.</div>
+        <div class="sheet-buttons">
+          <button class="btn btn-secondary" id="btnCloseNote" style="flex:1;">닫기</button>
+          <button class="btn btn-primary" id="btnSendNote" style="flex:2;">보내기</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="whisper" id="whisper"></div>
+  </div>
+
+  <div class="note">위 컨트롤로 위젯 크기를 바꿔보세요. 미디엄은 버튼이 위젯 안에 있고,<br>스몰은 위젯 전체를 탭하면 시트로 들어갑니다.</div>
+
+<script>
+  const quests = [
+    { tag: "실내 · 5분",     text: "창문 하나만 활짝 열어보기" },
+    { tag: "실외 · 즉시",     text: "하늘 색 3초만 쳐다보기" },
+    { tag: "같이 · 즉시",     text: "옆에 있는 사람한테 아무 말이나 걸어보기" },
+    { tag: "머리 씀 · 15분+", text: "안 읽은 책 아무 페이지나 펼쳐 읽기" },
+    { tag: "이동중 · 즉시",   text: "이어폰 빼고 주변 소리 들어보기" },
+    { tag: "그냥 멍 · 5분",   text: "아무것도 안 하고 가만히 앉아있기" },
+    { tag: "몸 씀 · 즉시",     text: "목 한 바퀴 천천히 돌려보기" },
+    { tag: "창작 · 15분+",    text: "아무 종이에나 낙서 하나 그려보기" },
+  ];
+
+  let current = quests[0];
+  let pool = quests.slice(1);
+  let size = 'medium';
+
+  const widgetSlot = document.getElementById('widgetSlot');
+  const widget = document.getElementById('widget');
+  const widgetButtons = document.getElementById('widgetButtons');
+  const questTag = document.getElementById('questTag');
+  const questText = document.getElementById('questText');
+  const btnSkip = document.getElementById('btnSkip');
+  const btnGo = document.getElementById('btnGo');
+
+  const scrim = document.getElementById('scrim');
+  const sheet = document.getElementById('sheet');
+  const sheetEyebrow = document.getElementById('sheetEyebrow');
+  const sheetQuestText = document.getElementById('sheetQuestText');
+  const sheetDecideButtons = document.getElementById('sheetDecideButtons');
+  const sheetSkip = document.getElementById('sheetSkip');
+  const sheetGo = document.getElementById('sheetGo');
+  const sheetNoteBlock = document.getElementById('sheetNoteBlock');
+  const noteInput = document.getElementById('noteInput');
+  const btnCloseNote = document.getElementById('btnCloseNote');
+  const btnSendNote = document.getElementById('btnSendNote');
+  const whisper = document.getElementById('whisper');
+
+  const btnMediumDev = document.getElementById('btnMedium');
+  const btnSmallDev = document.getElementById('btnSmall');
+
+  // Same archive/reaction stand-ins as side_quest_widget_v2.html — see that file
+  // for the full note-taking demo; here they just back up this same "해볼래" step
+  // so the home mockup doesn't silently drop the note opportunity the spec requires.
+  const ARCHIVE_KEY = 'sidequest_archive_home';
+  let memoryFallback = [];
+  const storage = {
+    save(entry) {
+      const all = this.all();
+      all.push(entry);
+      try { localStorage.setItem(ARCHIVE_KEY, JSON.stringify(all)); }
+      catch { memoryFallback = all; }
+      return all.length;
+    },
+    all() {
+      try { return JSON.parse(localStorage.getItem(ARCHIVE_KEY) || '[]'); }
+      catch { return memoryFallback; }
+    }
+  };
+  const whisperPool = [
+    "오, 좋네요.", "그거 좋은 소리네요.", "기록해뒀어요.",
+    "네, 접수요.", "좋은 한마디네요.", "그렇군요, 담아뒀어요."
+  ];
+  function mockLLMReaction(note) {
+    const trimmed = note.trim();
+    if (trimmed.length < 2) return null;
+    if (/^[\s\W_]+$/.test(trimmed)) return null;
+    if (Math.random() >= 0.55) return null;
+    return whisperPool[Math.floor(Math.random() * whisperPool.length)];
+  }
+  function showWhisper(text) {
+    whisper.textContent = text;
+    whisper.classList.add('show');
+    setTimeout(() => whisper.classList.remove('show'), 3000);
+  }
+
+  function pickNext() {
+    if (pool.length === 0) pool = quests.slice();
+    const idx = Math.floor(Math.random() * pool.length);
+    const next = pool[idx];
+    pool.splice(idx, 1);
+    return next;
+  }
+
+  function render() {
+    questTag.textContent = current.tag;
+    questText.textContent = current.text;
+    sheetQuestText.textContent = current.text;
+  }
+
+  function applySize() {
+    if (size === 'small') {
+      widgetSlot.classList.add('small');
+      widget.classList.add('small-variant');
+      widgetButtons.style.display = 'none';
+      widget.onclick = openDecideSheet;
+      btnSmallDev.classList.add('active');
+      btnMediumDev.classList.remove('active');
+    } else {
+      widgetSlot.classList.remove('small');
+      widget.classList.remove('small-variant');
+      widgetButtons.style.display = 'flex';
+      widget.onclick = null; // medium: only the buttons are interactive, not the whole tile
+      btnMediumDev.classList.add('active');
+      btnSmallDev.classList.remove('active');
+    }
+  }
+
+  // Small widget: tap doesn't say which action yet, so the sheet asks once (다음에/해볼래).
+  function openDecideSheet() {
+    render();
+    sheetEyebrow.textContent = '사이드퀘스트';
+    sheetDecideButtons.style.display = 'flex';
+    sheetNoteBlock.style.display = 'none';
+    scrim.classList.add('show');
+    sheet.classList.add('show');
+  }
+
+  // "해볼래" was already decided (medium widget's own button, or just picked in the
+  // decide sheet) — this step never re-asks 다음에/해볼래. Per the plan doc (2.2/2.3),
+  // acceptance itself is instant; this note is a one-time optional extra, skippable
+  // by just tapping 닫기.
+  let idleTimer = null;
+
+  function openNoteSheet() {
+    render();
+    sheetEyebrow.textContent = '접수했어요';
+    sheetDecideButtons.style.display = 'none';
+    sheetNoteBlock.style.display = 'block';
+    noteInput.value = '';
+    scrim.classList.add('show');
+    sheet.classList.add('show');
+    setTimeout(() => noteInput.focus(), 320);
+    // default is to skip (기본값은 생략) — if nothing is typed, close on its own
+    idleTimer = setTimeout(() => finishAccept(null), 3200);
+  }
+
+  // typing means they're using it — stop the auto-close from cutting them off
+  noteInput.addEventListener('input', () => {
+    if (idleTimer) { clearTimeout(idleTimer); idleTimer = null; }
+  });
+
+  function closeSheet() {
+    scrim.classList.remove('show');
+    sheet.classList.remove('show');
+  }
+
+  function advance() {
+    current = pickNext();
+    render();
+  }
+
+  function finishAccept(note) {
+    if (idleTimer) { clearTimeout(idleTimer); idleTimer = null; }
+    storage.save({ quest: current.text, tag: current.tag, note: note || null, ts: new Date().toISOString() });
+    const reaction = note ? mockLLMReaction(note) : null;
+    closeSheet();
+    if (reaction) setTimeout(() => showWhisper(reaction), 380);
+    setTimeout(advance, 320);
+  }
+
+  btnSkip.addEventListener('click', (e) => { e.stopPropagation(); advance(); });
+  btnGo.addEventListener('click', (e) => { e.stopPropagation(); openNoteSheet(); });
+
+  sheetSkip.addEventListener('click', () => { advance(); closeSheet(); });
+  sheetGo.addEventListener('click', openNoteSheet); // accepted from the decide sheet — straight into the same note step, no re-ask
+
+  btnCloseNote.addEventListener('click', () => finishAccept(null));
+  btnSendNote.addEventListener('click', () => finishAccept(noteInput.value));
+  scrim.addEventListener('click', () => {
+    if (sheetNoteBlock.style.display === 'block') finishAccept(noteInput.value);
+    else closeSheet();
+  });
+
+  btnMediumDev.addEventListener('click', () => { size = 'medium'; applySize(); });
+  btnSmallDev.addEventListener('click', () => { size = 'small'; applySize(); });
+
+  render();
+  applySize();
+
+  function updateClock() {
+    const now = new Date();
+    let h = now.getHours();
+    const m = now.getMinutes().toString().padStart(2, '0');
+    h = h % 12 || 12;
+    document.getElementById('clock').textContent = `${h}:${m}`;
+  }
+  updateClock();
+  setInterval(updateClock, 15000);
+</script>
+
+</body>
+</html>

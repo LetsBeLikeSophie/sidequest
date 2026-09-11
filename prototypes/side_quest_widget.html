@@ -1,0 +1,360 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>사이드퀘스트 — 위젯 프로토타입 v1</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Gowun+Dodum&display=swap">
+<style>
+  :root {
+    --bg-top: #dfe4ec;
+    --bg-bottom: #c7cedb;
+    --widget-bg: #ffffff;
+    --widget-bg-alt: #fbfbfc;
+    --text-main: #1c1c1e;
+    --text-sub: #8a8a8e;
+    --accent: #5a6bb0;
+    --btn-primary-bg: #5a6bb0;
+    --btn-primary-text: #ffffff;
+    --btn-secondary-bg: #f0f0f2;
+    --btn-secondary-text: #6b6b70;
+    --tag-bg: #f0f0f2;
+    --tag-text: #7a7a80;
+    --shadow: 0 20px 40px -12px rgba(0,0,0,0.25), 0 4px 12px rgba(0,0,0,0.08);
+  }
+
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+
+  html, body {
+    margin: 0;
+    height: 100%;
+    font-family: -apple-system, BlinkMacSystemFont, "Pretendard", "Apple SD Gothic Neo", "Malgun Gothic", sans-serif;
+  }
+
+  body {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: radial-gradient(circle at 30% 20%, var(--bg-top), var(--bg-bottom));
+    overflow: hidden;
+  }
+
+  .phone {
+    width: 360px;
+    height: 720px;
+    background: linear-gradient(160deg, #e8ecf2 0%, #d3dae4 100%);
+    border-radius: 46px;
+    box-shadow: var(--shadow);
+    position: relative;
+    padding: 64px 20px 40px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+  }
+
+  .notch {
+    position: absolute;
+    top: 18px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 120px;
+    height: 26px;
+    background: #0b0b0c;
+    border-radius: 16px;
+  }
+
+  .clock {
+    color: rgba(28,28,30,0.55);
+    font-size: 13px;
+    font-weight: 600;
+    margin-bottom: 28px;
+    letter-spacing: 0.3px;
+  }
+
+  /* ---- Widget ---- */
+  .widget {
+    width: 100%;
+    max-width: 320px;
+    height: 155px;
+    background: var(--widget-bg);
+    border-radius: 26px;
+    box-shadow: 0 8px 20px rgba(0,0,0,0.10), 0 2px 4px rgba(0,0,0,0.04);
+    padding: 18px 20px 16px;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .widget-top {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 8px;
+  }
+
+  .quest-tag {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    background: var(--tag-bg);
+    color: var(--tag-text);
+    font-size: 10.5px;
+    font-weight: 600;
+    padding: 4px 9px;
+    border-radius: 20px;
+    white-space: nowrap;
+    letter-spacing: 0.2px;
+  }
+
+  .quest-text-wrap {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    min-height: 54px;
+  }
+
+  .quest-text {
+    font-family: 'Gowun Dodum', -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo", sans-serif;
+    font-size: 18.5px;
+    font-weight: 400;
+    color: var(--text-main);
+    line-height: 1.48;
+    letter-spacing: -0.2px;
+  }
+
+  .widget-buttons {
+    display: flex;
+    gap: 8px;
+  }
+
+  .btn {
+    flex: 1;
+    border: none;
+    border-radius: 13px;
+    padding: 11px 0;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: transform 0.12s ease, opacity 0.12s ease;
+    letter-spacing: -0.1px;
+  }
+
+  .btn:active {
+    transform: scale(0.96);
+    opacity: 0.85;
+  }
+
+  .btn-secondary {
+    background: var(--btn-secondary-bg);
+    color: var(--btn-secondary-text);
+  }
+
+  .btn-primary {
+    background: var(--btn-primary-bg);
+    color: var(--btn-primary-text);
+  }
+
+  /* ---- Confirm state (해볼래) ---- */
+  .confirm-layer {
+    position: absolute;
+    inset: 0;
+    background: var(--widget-bg);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    opacity: 0;
+    pointer-events: none;
+    transform: scale(0.98);
+    transition: opacity 0.28s ease, transform 0.28s ease;
+  }
+
+  .confirm-layer.show {
+    opacity: 1;
+    pointer-events: auto;
+    transform: scale(1);
+  }
+
+  .confirm-check {
+    width: 34px;
+    height: 34px;
+    border-radius: 50%;
+    background: var(--btn-primary-bg);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .confirm-check svg {
+    width: 16px;
+    height: 16px;
+  }
+
+  .confirm-label {
+    font-size: 13.5px;
+    color: var(--text-sub);
+    font-weight: 500;
+  }
+
+  /* ---- swap animation ---- */
+  .quest-text-wrap.anim-out .quest-text,
+  .widget-top.anim-out .quest-tag {
+    animation: fadeSlideOut 0.16s ease forwards;
+  }
+  .quest-text-wrap.anim-in .quest-text,
+  .widget-top.anim-in .quest-tag {
+    animation: fadeSlideIn 0.22s ease forwards;
+  }
+
+  @keyframes fadeSlideOut {
+    to { opacity: 0; transform: translateY(-6px); }
+  }
+  @keyframes fadeSlideIn {
+    from { opacity: 0; transform: translateY(6px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  .hint {
+    margin-top: 28px;
+    color: rgba(28,28,30,0.35);
+    font-size: 12px;
+    text-align: center;
+    line-height: 1.6;
+    max-width: 260px;
+  }
+
+  .home-indicator {
+    position: absolute;
+    bottom: 14px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 120px;
+    height: 5px;
+    background: rgba(28,28,30,0.25);
+    border-radius: 3px;
+  }
+</style>
+</head>
+<body>
+
+  <div class="phone">
+    <div class="notch"></div>
+    <div class="clock" id="clock">9:41</div>
+
+    <div class="widget" id="widget">
+      <div class="widget-top" id="widgetTop">
+        <span class="quest-tag" id="questTag">실내 · 5분</span>
+      </div>
+      <div class="quest-text-wrap" id="questTextWrap">
+        <div class="quest-text" id="questText">창문 하나만 활짝 열어보기</div>
+      </div>
+      <div class="widget-buttons">
+        <button class="btn btn-secondary" id="btnSkip">다음에</button>
+        <button class="btn btn-primary" id="btnGo">해볼래</button>
+      </div>
+
+      <div class="confirm-layer" id="confirmLayer">
+        <div class="confirm-check">
+          <svg viewBox="0 0 24 24" fill="none">
+            <path d="M5 13l4 4L19 7" stroke="white" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+        </div>
+        <div class="confirm-label">접수했어요</div>
+      </div>
+    </div>
+
+    <div class="hint">"다음에"는 위젯만 조용히 바뀌어요.<br>"해볼래"는 잠깐 접수 표시 후 다음 퀘스트로 넘어가요.</div>
+
+    <div class="home-indicator"></div>
+  </div>
+
+<script>
+  const quests = [
+    { tag: "실내 · 5분",   text: "창문 하나만 활짝 열어보기" },
+    { tag: "실외 · 즉시",   text: "하늘 색 3초만 쳐다보기" },
+    { tag: "같이 · 즉시",   text: "옆에 있는 사람한테 아무 말이나 걸어보기" },
+    { tag: "머리 씀 · 15분+", text: "안 읽은 책 아무 페이지나 펼쳐 읽기" },
+    { tag: "이동중 · 즉시", text: "이어폰 빼고 주변 소리 들어보기" },
+    { tag: "그냥 멍 · 5분", text: "아무것도 안 하고 가만히 앉아있기" },
+    { tag: "몸 씀 · 즉시",   text: "목 한 바퀴 천천히 돌려보기" },
+    { tag: "창작 · 15분+",  text: "아무 종이에나 낙서 하나 그려보기" },
+    { tag: "혼자 · 5분",   text: "핸드폰 없이 커피 한 잔 마셔보기" },
+    { tag: "실외 · 15분+", text: "평소 안 가던 골목으로 돌아가보기" }
+  ];
+
+  let current = quests[0];
+  let pool = quests.slice(1);
+
+  const widget = document.getElementById('widget');
+  const widgetTop = document.getElementById('widgetTop');
+  const questTextWrap = document.getElementById('questTextWrap');
+  const questTag = document.getElementById('questTag');
+  const questText = document.getElementById('questText');
+  const confirmLayer = document.getElementById('confirmLayer');
+  const btnSkip = document.getElementById('btnSkip');
+  const btnGo = document.getElementById('btnGo');
+
+  function pickNext() {
+    if (pool.length === 0) pool = quests.slice();
+    const idx = Math.floor(Math.random() * pool.length);
+    const next = pool[idx];
+    pool.splice(idx, 1);
+    return next;
+  }
+
+  function renderQuest(q, animate) {
+    if (animate) {
+      widgetTop.classList.add('anim-out');
+      questTextWrap.classList.add('anim-out');
+      setTimeout(() => {
+        questTag.textContent = q.tag;
+        questText.textContent = q.text;
+        widgetTop.classList.remove('anim-out');
+        questTextWrap.classList.remove('anim-out');
+        widgetTop.classList.add('anim-in');
+        questTextWrap.classList.add('anim-in');
+        setTimeout(() => {
+          widgetTop.classList.remove('anim-in');
+          questTextWrap.classList.remove('anim-in');
+        }, 240);
+      }, 160);
+    } else {
+      questTag.textContent = q.tag;
+      questText.textContent = q.text;
+    }
+  }
+
+  btnSkip.addEventListener('click', () => {
+    current = pickNext();
+    renderQuest(current, true);
+  });
+
+  btnGo.addEventListener('click', () => {
+    confirmLayer.classList.add('show');
+    setTimeout(() => {
+      // swap content while still hidden behind the opaque confirm layer,
+      // then reveal it by fading the layer away — avoids a visible cross-fade glitch
+      current = pickNext();
+      renderQuest(current, false);
+      confirmLayer.classList.remove('show');
+    }, 1100);
+  });
+
+  // live clock
+  function updateClock() {
+    const now = new Date();
+    let h = now.getHours();
+    const m = now.getMinutes().toString().padStart(2, '0');
+    const ampm = h >= 12 ? 'PM' : 'AM';
+    h = h % 12 || 12;
+    document.getElementById('clock').textContent = `${h}:${m}`;
+  }
+  updateClock();
+  setInterval(updateClock, 15000);
+</script>
+
+</body>
+</html>

@@ -1,0 +1,16 @@
+# Android / Gradle
+android/local.properties
+android/.gradle/
+android/.kotlin/
+android/build/
+android/app/build/
+android/*/build/
+android/.idea/
+android/*.iml
+android/captures/
+android/.cxx/
+
+# OS / editor
+.DS_Store
+Thumbs.db
+.claude/
