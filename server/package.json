@@ -1,0 +1,9 @@
+{
+  "name": "sidequest-server",
+  "private": true,
+  "type": "module",
+  "version": "0.1.0",
+  "scripts": {
+    "start": "node --env-file=../.env server.js"
+  }
+}
