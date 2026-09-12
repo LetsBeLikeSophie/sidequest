@@ -26,28 +26,19 @@ class SideQuestWidgetProvider : AppWidgetProvider() {
         private const val PREFS = "side_quest_widget_state"
         private const val KEY_INDEX = "quest_index"
 
-        val QUESTS = listOf(
-            Quest("실내 · 5분", "창문 하나만 활짝 열어보기"),
-            Quest("실외 · 즉시", "하늘 색 3초만 쳐다보기"),
-            Quest("같이 · 즉시", "옆에 있는 사람한테 아무 말이나 걸어보기"),
-            Quest("머리 씀 · 15분+", "안 읽은 책 아무 페이지나 펼쳐 읽기"),
-            Quest("이동중 · 즉시", "이어폰 빼고 주변 소리 들어보기"),
-            Quest("그냥 멍 · 5분", "아무것도 안 하고 가만히 앉아있기"),
-            Quest("몸 씀 · 즉시", "목 한 바퀴 천천히 돌려보기"),
-            Quest("창작 · 15분+", "아무 종이에나 낙서 하나 그려보기")
-        )
-
         fun currentQuest(context: Context): Quest {
+            val quests = QuestPool.all(context)
             val prefs = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
             val index = prefs.getInt(KEY_INDEX, 0)
-            return QUESTS[index % QUESTS.size]
+            return quests[index % quests.size]
         }
 
         /** Moves to the next quest and repaints every placed widget. Used by both
          *  the widget's own "다음에" button and MainActivity when its note sheet closes. */
         fun advanceAndRefreshWidgets(context: Context) {
+            val quests = QuestPool.all(context)
             val prefs = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
-            val next = (prefs.getInt(KEY_INDEX, 0) + 1) % QUESTS.size
+            val next = (prefs.getInt(KEY_INDEX, 0) + 1) % quests.size
             prefs.edit().putInt(KEY_INDEX, next).apply()
             refreshAllWidgets(context)
         }
