@@ -23,23 +23,14 @@ class SideQuestWidgetProvider : AppWidgetProvider() {
 
     companion object {
         const val ACTION_SKIP = "com.sidequest.app.ACTION_SKIP"
-        private const val PREFS = "side_quest_widget_state"
-        private const val KEY_INDEX = "quest_index"
 
-        fun currentQuest(context: Context): Quest {
-            val quests = QuestPool.all(context)
-            val prefs = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
-            val index = prefs.getInt(KEY_INDEX, 0)
-            return quests[index % quests.size]
-        }
+        fun currentQuest(context: Context): Quest =
+            QuestSequencer.current(context, QuestPool.all(context))
 
         /** Moves to the next quest and repaints every placed widget. Used by both
          *  the widget's own "다음에" button and MainActivity when its note sheet closes. */
         fun advanceAndRefreshWidgets(context: Context) {
-            val quests = QuestPool.all(context)
-            val prefs = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
-            val next = (prefs.getInt(KEY_INDEX, 0) + 1) % quests.size
-            prefs.edit().putInt(KEY_INDEX, next).apply()
+            QuestSequencer.advance(context, QuestPool.all(context))
             refreshAllWidgets(context)
         }
 
