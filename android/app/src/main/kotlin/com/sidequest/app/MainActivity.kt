@@ -13,6 +13,7 @@ import android.text.TextWatcher
 import android.view.ViewGroup
 import android.widget.EditText
 import android.widget.TextView
+import android.widget.Toast
 import androidx.core.app.ActivityCompat
 
 /**
@@ -104,6 +105,19 @@ class MainActivity : Activity() {
         val note = rawNote?.trim()?.takeIf { it.isNotEmpty() }
         QuestArchive.save(this, quest, note)
         SideQuestWidgetProvider.advanceAndRefreshWidgets(this)
+
+        // The web prototype's "whisper" (3초짜리, 못 찾아보게 사라지는 반응) maps to a
+        // plain Toast here — it's tied to the application, not this activity, so it
+        // still shows over the home screen after finish() below closes the sheet.
+        if (note != null) {
+            val appContext = applicationContext
+            ReactionClient.fetchReaction(note) { reaction ->
+                if (reaction != null) {
+                    Toast.makeText(appContext, reaction, Toast.LENGTH_LONG).show()
+                }
+            }
+        }
+
         finish()
     }
 
