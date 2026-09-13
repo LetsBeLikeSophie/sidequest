@@ -42,7 +42,7 @@
             android:background="@drawable/btn_secondary_bg"
             android:textColor="#6B6B70"
             android:textAllCaps="false"
-            android:text="다음에" />
+            android:text="지우기" />
 
         <Button
             android:id="@+id/widget_btn_accept"
@@ -52,7 +52,7 @@
             android:background="@drawable/btn_primary_bg"
             android:textColor="#FFFFFF"
             android:textAllCaps="false"
-            android:text="해볼래" />
+            android:text="♥ 하트" />
 
     </LinearLayout>
 

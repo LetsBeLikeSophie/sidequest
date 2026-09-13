@@ -25,9 +25,10 @@
             android:background="#E0E0E2" />
 
         <TextView
-            android:layout_width="wrap_content"
+            android:id="@+id/sheet_eyebrow"
+            android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:text="접수했어요"
+            android:text="창문 하나만 활짝 열어보기"
             android:textSize="12sp"
             android:textColor="#8A8A8E" />
 
@@ -40,7 +41,7 @@
             android:textSize="18sp"
             android:textStyle="bold"
             android:textColor="#1C1C1E"
-            android:text="창문 하나만 활짝 열어보기" />
+            android:text="열어보니 바람이나 냄새, 뭐가 느껴졌나요?" />
 
         <EditText
             android:id="@+id/note_input"
@@ -51,7 +52,7 @@
             android:background="@drawable/note_input_bg"
             android:gravity="top|start"
             android:padding="13dp"
-            android:hint="한마디만 (안 남겨도 돼요)"
+            android:hint="답 안 해도 돼요"
             android:textColorHint="#B3B3B6"
             android:textSize="14.5sp"
             android:textColor="#1C1C1E"

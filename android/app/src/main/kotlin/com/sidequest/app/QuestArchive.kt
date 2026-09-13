@@ -15,14 +15,15 @@ object QuestArchive {
     private const val PREFS = "side_quest_archive"
     private const val KEY_ENTRIES = "entries"
 
-    fun save(context: Context, quest: Quest, note: String?) {
+    fun save(context: Context, tag: String, questText: String, question: String, answer: String?) {
         val prefs = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
         val all = JSONArray(prefs.getString(KEY_ENTRIES, "[]"))
 
         val entry = JSONObject().apply {
-            put("tag", quest.tag)
-            put("quest", quest.text)
-            put("note", note)
+            put("tag", tag)
+            put("quest", questText)
+            put("question", question)
+            put("answer", answer)
             put("ts", SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss", Locale.US).format(Date()))
         }
         all.put(entry)

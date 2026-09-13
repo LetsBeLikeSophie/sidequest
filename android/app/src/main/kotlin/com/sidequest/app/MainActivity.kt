@@ -17,21 +17,26 @@ import android.widget.Toast
 import androidx.core.app.ActivityCompat
 
 /**
- * The "한마디 남기기" sheet (기획문서 2.3). Reached only after "해볼래" was
- * already pressed on the widget — this screen never re-asks 다음에/해볼래,
- * it only offers an optional note before quietly moving the widget on.
+ * The callback sheet — reached only by tapping a CallbackNotificationWorker
+ * notification, well after "하트" was pressed on the widget. It never asks
+ * 지우기/하트 again; it only asks the one question that quest queued up
+ * (e.g. "하늘은 어땠나요?"), because by now there's actually been time to
+ * have done the thing. Hearting itself already advanced the widget — this
+ * screen's only job is to record (or skip) an answer.
  *
- * launchMode="singleTask": repeated widget taps must reuse this one instance
- * (via onNewIntent) instead of stacking a fresh MainActivity underneath each
- * time — a stack of activities each running their own idle-close timer made
- * it look like quests were advancing on their own when they finished in turn.
+ * launchMode="singleTask": repeated callback taps must reuse this one
+ * instance (via onNewIntent) instead of stacking a fresh MainActivity
+ * underneath each time — a stack of activities each running their own
+ * idle-close timer made it look like state was changing on its own.
  */
 class MainActivity : Activity() {
 
     private val idleHandler = Handler(Looper.getMainLooper())
     private var idleRunnable: Runnable? = null
     private var finished = false
-    private lateinit var quest: Quest
+    private lateinit var tag: String
+    private lateinit var questText: String
+    private lateinit var question: String
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -64,8 +69,13 @@ class MainActivity : Activity() {
         finished = false
         idleRunnable?.let { idleHandler.removeCallbacks(it) }
 
-        quest = SideQuestWidgetProvider.currentQuest(this)
-        findViewById<TextView>(R.id.sheet_quest_text).text = quest.text
+        // Only reachable via a callback notification, so these extras are always present.
+        tag = intent.getStringExtra(CALLBACK_QUEST_TAG) ?: ""
+        questText = intent.getStringExtra(CALLBACK_QUEST_TEXT) ?: ""
+        question = intent.getStringExtra(CALLBACK_QUEST_QUESTION) ?: ""
+
+        findViewById<TextView>(R.id.sheet_eyebrow).text = questText
+        findViewById<TextView>(R.id.sheet_quest_text).text = question
 
         val noteInput = findViewById<EditText>(R.id.note_input)
         noteInput.setText("")
@@ -97,21 +107,20 @@ class MainActivity : Activity() {
         }
     }
 
-    private fun finishWith(rawNote: String?) {
+    private fun finishWith(rawAnswer: String?) {
         if (finished) return
         finished = true
         idleRunnable?.let { idleHandler.removeCallbacks(it) }
 
-        val note = rawNote?.trim()?.takeIf { it.isNotEmpty() }
-        QuestArchive.save(this, quest, note)
-        SideQuestWidgetProvider.advanceAndRefreshWidgets(this)
+        val answer = rawAnswer?.trim()?.takeIf { it.isNotEmpty() }
+        QuestArchive.save(this, tag, questText, question, answer)
 
         // The web prototype's "whisper" (3초짜리, 못 찾아보게 사라지는 반응) maps to a
         // plain Toast here — it's tied to the application, not this activity, so it
         // still shows over the home screen after finish() below closes the sheet.
-        if (note != null) {
+        if (answer != null) {
             val appContext = applicationContext
-            ReactionClient.fetchReaction(note) { reaction ->
+            ReactionClient.fetchReaction(answer) { reaction ->
                 if (reaction != null) {
                     Toast.makeText(appContext, reaction, Toast.LENGTH_LONG).show()
                 }
