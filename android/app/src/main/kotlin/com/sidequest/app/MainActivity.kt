@@ -120,9 +120,22 @@ class MainActivity : Activity() {
         // still shows over the home screen after finish() below closes the sheet.
         if (answer != null) {
             val appContext = applicationContext
+
+            // Joins the "다른 사람 한마디" pool (기획문서 2.5) — server-side moderation
+            // decides if it's ever shown to anyone; this call doesn't wait for that.
+            CommunityClient.submitAnswer(questText, question, answer)
+
             ReactionClient.fetchReaction(answer) { reaction ->
                 if (reaction != null) {
                     Toast.makeText(appContext, reaction, Toast.LENGTH_LONG).show()
+                }
+            }
+
+            // Plain-toast wiring for now — the card-flip/gacha treatment for this
+            // is a UI project of its own, planned separately.
+            CommunityClient.fetchRandomAnswer(questText) { communityAnswer ->
+                if (communityAnswer != null) {
+                    Toast.makeText(appContext, "누군가는: $communityAnswer", Toast.LENGTH_LONG).show()
                 }
             }
         }
