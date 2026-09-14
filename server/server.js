@@ -12,6 +12,8 @@ import http from 'node:http';
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { moderate } from './moderation.js';
+import { addSubmission, listPending, decide, randomApprovedAnswer } from './answerStore.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -31,6 +33,9 @@ loadDotEnvFallback();
 const API_KEY = process.env.ANTHROPIC_API_KEY;
 const PORT = process.env.PORT || 8787;
 const MODEL = 'claude-sonnet-5';
+// Only for the /api/review/* endpoints below — this is a solo-dev moderation
+// queue, not a real admin system, so a shared-secret header is enough.
+const ADMIN_TOKEN = process.env.ADMIN_TOKEN;
 
 // 기획문서 2.4: 10~18자, 담백한 톤, 절대 평가·분석·조언·칭찬 금지.
 const SYSTEM_PROMPT =
@@ -42,7 +47,12 @@ const SYSTEM_PROMPT =
 function isRelevant(note) {
   const trimmed = note.trim();
   if (trimmed.length < 2) return false;
-  if (/^[\s\W_]+$/u.test(trimmed)) return false; // symbols/whitespace only
+  // \w in JS regex is ASCII-only, so a naive "reject symbols-only" check
+  // using \W would treat pure-Hangul text as "symbols" and silently drop
+  // every Korean-only note. \p{L}/\p{N} (with the u flag) are Unicode-aware,
+  // so this actually just asks "is there at least one real letter or digit,
+  // in any script?" instead.
+  if (!/\p{L}|\p{N}/u.test(trimmed)) return false; // truly nothing but symbols/whitespace
   return true;
 }
 
@@ -75,32 +85,82 @@ async function getReaction(note) {
   return text || null;
 }
 
-const server = http.createServer(async (req, res) => {
-  if (req.method === 'POST' && req.url === '/api/react') {
+function readJsonBody(req) {
+  return new Promise((resolve, reject) => {
     let body = '';
     req.on('data', (chunk) => { body += chunk; });
-    req.on('end', async () => {
-      try {
-        const { note } = JSON.parse(body || '{}');
-        if (typeof note !== 'string' || !isRelevant(note)) {
-          res.writeHead(200, { 'content-type': 'application/json' });
-          res.end(JSON.stringify({ reaction: null }));
-          return;
-        }
-        const reaction = await getReaction(note);
-        res.writeHead(200, { 'content-type': 'application/json' });
-        res.end(JSON.stringify({ reaction }));
-      } catch (err) {
-        console.error(err);
-        res.writeHead(500, { 'content-type': 'application/json' });
-        res.end(JSON.stringify({ error: 'internal_error' }));
-      }
+    req.on('end', () => {
+      try { resolve(JSON.parse(body || '{}')); }
+      catch (err) { reject(err); }
     });
-    return;
-  }
+    req.on('error', reject);
+  });
+}
 
-  res.writeHead(404, { 'content-type': 'application/json' });
-  res.end(JSON.stringify({ error: 'not_found' }));
+function sendJson(res, status, obj) {
+  res.writeHead(status, { 'content-type': 'application/json' });
+  res.end(JSON.stringify(obj));
+}
+
+function isAuthorized(req) {
+  return Boolean(ADMIN_TOKEN) && req.headers['x-admin-token'] === ADMIN_TOKEN;
+}
+
+const server = http.createServer(async (req, res) => {
+  const url = new URL(req.url, 'http://localhost');
+
+  try {
+    if (req.method === 'POST' && url.pathname === '/api/react') {
+      const { note } = await readJsonBody(req);
+      if (typeof note !== 'string' || !isRelevant(note)) {
+        return sendJson(res, 200, { reaction: null });
+      }
+      const reaction = await getReaction(note);
+      return sendJson(res, 200, { reaction });
+    }
+
+    // 기획문서 2.5: 사용자가 답한 한마디를 "다른 사람 답변" 풀에 넣기 전에
+    // 검수한다. 어떤 판정이 나왔는지는 절대 응답에 담지 않는다 — 제출한
+    // 사람이 "내 글이 반려됐다"는 걸 알게 되는 순간 그 자체로 평가받는
+    // 느낌이 생기기 때문에, 접수 자체는 언제나 조용히 성공으로 처리한다.
+    if (req.method === 'POST' && url.pathname === '/api/submit-answer') {
+      const { quest, question, answer } = await readJsonBody(req);
+      if (typeof answer !== 'string' || !isRelevant(answer) ||
+          typeof quest !== 'string' || typeof question !== 'string') {
+        return sendJson(res, 200, { ok: true });
+      }
+      const { status, reason } = await moderate(API_KEY, MODEL, answer);
+      addSubmission({ quest, question, answer, status, reason });
+      return sendJson(res, 200, { ok: true });
+    }
+
+    if (req.method === 'GET' && url.pathname === '/api/random-answer') {
+      const quest = url.searchParams.get('quest') || '';
+      const entry = randomApprovedAnswer(quest);
+      return sendJson(res, 200, { answer: entry?.answer ?? null });
+    }
+
+    if (req.method === 'GET' && url.pathname === '/api/review/pending') {
+      if (!isAuthorized(req)) return sendJson(res, 401, { error: 'unauthorized' });
+      return sendJson(res, 200, { pending: listPending() });
+    }
+
+    if (req.method === 'POST' && url.pathname === '/api/review/decide') {
+      if (!isAuthorized(req)) return sendJson(res, 401, { error: 'unauthorized' });
+      const { id, decision } = await readJsonBody(req);
+      if (decision !== 'approved' && decision !== 'rejected') {
+        return sendJson(res, 400, { error: 'invalid_decision' });
+      }
+      const entry = decide(id, decision);
+      if (!entry) return sendJson(res, 404, { error: 'not_found' });
+      return sendJson(res, 200, { ok: true, entry });
+    }
+
+    return sendJson(res, 404, { error: 'not_found' });
+  } catch (err) {
+    console.error(err);
+    return sendJson(res, 500, { error: 'internal_error' });
+  }
 });
 
 if (!API_KEY) {

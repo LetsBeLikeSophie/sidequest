@@ -10,6 +10,9 @@ android/*.iml
 android/captures/
 android/.cxx/
 
+# server (user-submitted content, not source)
+server/data/
+
 # OS / editor
 .DS_Store
 Thumbs.db
